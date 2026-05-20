@@ -7,6 +7,7 @@ from pathlib import Path
 from src.pipelines.etl_pipeline import (
     InMemoryRDSAdapter,
     JsonFileS3Adapter,
+    SimpleTransformer,
     run_pipeline,
 )
 
@@ -79,6 +80,18 @@ class TestAdapters(unittest.TestCase):
 
             self.assertEqual(1, len(raw_files))
             self.assertEqual(1, len(processed_files))
+
+    def test_simple_transformer_deduplicates_external_id(self):
+        transformer = SimpleTransformer()
+        clean = transformer.transform(
+            [
+                {"external_id": "x1", "title": "A"},
+                {"external_id": "x1", "title": "A duplicate"},
+                {"external_id": "x2", "title": "B"},
+                {"external_id": "", "title": "Missing id"},
+            ]
+        )
+        self.assertEqual(["x1", "x2"], [row["external_id"] for row in clean])
 
 
 if __name__ == "__main__":
