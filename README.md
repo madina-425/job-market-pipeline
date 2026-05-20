@@ -2,7 +2,7 @@
 
 This repository now has a runnable ETL entrypoint at:
 
-- `/home/runner/work/pipeline/pipeline/src/pipelines/etl_pipeline.py`
+- `src/pipelines/etl_pipeline.py`
 
 It follows this exact order:
 
@@ -15,7 +15,7 @@ It follows this exact order:
 ## First run (copy/paste)
 
 ```bash
-cd /home/runner/work/pipeline/pipeline
+cd <your-project-root>
 python -m src.pipelines.etl_pipeline
 ```
 
@@ -29,7 +29,7 @@ python -m src.pipelines.etl_pipeline
 
 ## What to change for production (S3 + PostgreSQL)
 
-Edit `/home/runner/work/pipeline/pipeline/src/pipelines/etl_pipeline.py` in `main()` and replace:
+Edit `src/pipelines/etl_pipeline.py` in `main()` and replace:
 
 - `JsonFileS3Adapter()` with your real S3 client (`save_raw`, `save_processed` to parquet)
 - `InMemoryRDSAdapter()` with your PostgreSQL client (`upsert_jobs`)
