@@ -68,7 +68,7 @@ class TestAdapters(unittest.TestCase):
         rds.upsert_jobs([{"external_id": "1"}, {"external_id": "1"}, {"external_id": "2"}])
         self.assertEqual(2, len(rds.rows))
 
-    def test_local_s3_adapter_creates_raw_and_processed_paths(self):
+    def test_local_s3_adapter_creates_raw_and_processed_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             adapter = JsonFileS3Adapter(base_dir=Path(tmp))
             adapter.save_raw([{"external_id": "1"}], source="headhunter")

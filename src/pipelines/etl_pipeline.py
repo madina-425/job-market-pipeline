@@ -107,7 +107,7 @@ class SimpleTransformer:
 class JsonFileS3Adapter:
     """
     Local S3-like adapter for first run.
-    Stores JSON files in the same raw/processed folder structure.
+    Stores JSON files in separate raw/ and processed/ folder hierarchies by date.
     """
 
     base_dir: Path = Path("local_s3")
