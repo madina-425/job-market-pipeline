@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 from src.pipelines.etl_pipeline import (
     InMemoryRDSAdapter,
@@ -25,7 +26,7 @@ class _Transformer:
     def __init__(self, events: list[str]) -> None:
         self.events = events
 
-    def transform(self, raw_jobs):
+    def transform(self, raw_jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         self.events.append("transform")
         return [{"external_id": "1"}, {"external_id": "2"}]
 
@@ -34,10 +35,10 @@ class _S3:
     def __init__(self, events: list[str]) -> None:
         self.events = events
 
-    def save_raw(self, raw_jobs, source):
+    def save_raw(self, raw_jobs: list[dict[str, Any]], source: str) -> None:
         self.events.append("save_raw")
 
-    def save_processed(self, clean_jobs):
+    def save_processed(self, clean_jobs: list[dict[str, Any]]) -> None:
         self.events.append("save_processed")
 
 
@@ -45,7 +46,7 @@ class _RDS:
     def __init__(self, events: list[str]) -> None:
         self.events = events
 
-    def upsert_jobs(self, clean_jobs):
+    def upsert_jobs(self, clean_jobs: list[dict[str, Any]]) -> None:
         self.events.append("upsert")
 
 
