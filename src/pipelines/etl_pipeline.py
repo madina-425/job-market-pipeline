@@ -124,7 +124,7 @@ class JsonFileS3Adapter:
         now = datetime.now(timezone.utc)
         processed_dir = self.base_dir / "processed" / now.strftime("%Y/%m/%d")
         processed_dir.mkdir(parents=True, exist_ok=True)
-        processed_file = processed_dir / "jobs_clean.parquet"
+        processed_file = processed_dir / "jobs_clean.json"
         processed_file.write_text(
             json.dumps(clean_jobs, ensure_ascii=False, indent=2),
             encoding="utf-8",

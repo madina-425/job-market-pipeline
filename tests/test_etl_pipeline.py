@@ -75,7 +75,7 @@ class TestAdapters(unittest.TestCase):
             adapter.save_processed([{"external_id": "1"}])
 
             raw_files = list(Path(tmp).glob("raw/headhunter/*/*/*/jobs_*.json"))
-            processed_files = list(Path(tmp).glob("processed/*/*/*/jobs_clean.parquet"))
+            processed_files = list(Path(tmp).glob("processed/*/*/*/jobs_clean.json"))
 
             self.assertEqual(1, len(raw_files))
             self.assertEqual(1, len(processed_files))
