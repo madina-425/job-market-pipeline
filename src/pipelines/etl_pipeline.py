@@ -11,6 +11,7 @@ Pipeline order:
 from __future__ import annotations
 
 import json
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -116,7 +117,7 @@ class JsonFileS3Adapter:
         now = datetime.now(timezone.utc)
         raw_dir = self.base_dir / "raw" / source / now.strftime("%Y/%m/%d")
         raw_dir.mkdir(parents=True, exist_ok=True)
-        raw_file = raw_dir / f"jobs_{now.strftime('%H-%M-%S-%f')}.json"
+        raw_file = raw_dir / f"jobs_{now.strftime('%H-%M-%S')}_{uuid.uuid4().hex[:8]}.json"
         raw_file.write_text(json.dumps(raw_jobs, ensure_ascii=False, indent=2), encoding="utf-8")
         log.info("Saved raw data to %s", raw_file)
 

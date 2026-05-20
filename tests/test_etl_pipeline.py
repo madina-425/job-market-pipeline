@@ -68,6 +68,7 @@ class TestAdapters(unittest.TestCase):
         rds = InMemoryRDSAdapter()
         rds.upsert_jobs([{"external_id": "1"}, {"external_id": "1"}, {"external_id": "2"}])
         self.assertEqual(2, len(rds.rows))
+        self.assertEqual([{"external_id": "1"}, {"external_id": "2"}], rds.rows)
 
     def test_local_s3_adapter_creates_raw_and_processed_files(self):
         with tempfile.TemporaryDirectory() as tmp:
