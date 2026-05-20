@@ -1,7 +1,6 @@
 """
 src/collectors/hh_collector.py
-Collects job postings from the HeadHunter public API (api.hh.ru).
-No authentication required for read-only vacancy search.
+Collects job postings from the HeadHunter API using OAuth 2.0 authentication.
 
 Docs: https://api.hh.ru/openapi/redoc
 """
@@ -10,8 +9,11 @@ from __future__ import annotations
 import time
 from datetime import datetime, timezone
 from typing import Generator
+import os
 
 import requests
+from dotenv import load_dotenv
+load_dotenv()
 
 from src.utils.logger import get_logger
 
@@ -26,19 +28,50 @@ TARGET_ROLES = [
     "Data Engineer",
     "Machine Learning Engineer",
     "ML Engineer",
-    "аналитик данных",        # Russian equivalents for broader coverage
+    "аналитик данных",
     "инженер данных",
 ]
 
 HH_BASE = "https://api.hh.ru"
+HH_AUTH_URL = "https://hh.ru/oauth/token"
 
 
 class HHCollector:
-    """Wraps the HeadHunter vacancy search API."""
+    """Wraps the HeadHunter vacancy search API with OAuth 2.0 authentication."""
 
-    def __init__(self, user_agent: str = "JobMarketPipeline/1.0"):
+    def __init__(self, client_id: str | None = None, client_secret: str | None = None):
+        self.client_id = client_id or os.getenv("HH_CLIENT_ID")
+        self.client_secret = client_secret or os.getenv("HH_CLIENT_SECRET")
+        
+        if not self.client_id or not self.client_secret:
+            raise ValueError("HH_CLIENT_ID and HH_CLIENT_SECRET must be provided")
+        
         self.session = requests.Session()
-        self.session.headers.update({"User-Agent": user_agent})
+        self.access_token = None
+        self._authenticate()
+
+    def _authenticate(self) -> None:
+        """Obtain OAuth 2.0 access token."""
+        payload = {
+            "grant_type": "client_credentials",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+        }
+        try:
+            resp = requests.post(HH_AUTH_URL, data=payload, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            self.access_token = data["access_token"]
+            log.info("HH: successfully authenticated")
+        except requests.RequestException as exc:
+            log.error("HH: authentication failed: %s", exc)
+            raise
+
+        # Update session headers with Bearer token
+        self.session.headers.update({
+            "Authorization": f"Bearer {self.access_token}",
+            "User-Agent": "JobMarketPipeline/1.0",
+        })
 
     # ── Public interface ──────────────────────────────────────────────────────
 
@@ -152,3 +185,10 @@ def _map_experience(exp_id: str | None) -> str:
         "moreThan6": "senior",
     }
     return mapping.get(exp_id or "", "unknown")
+
+if __name__ == "__main__":
+    collector = HHCollector()
+    vacancies = collector.collect()
+    print(f"Collected {len(vacancies)} vacancies")
+    if vacancies:
+        print(vacancies[0])
