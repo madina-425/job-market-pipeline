@@ -1,11 +1,12 @@
 """
 src/loaders/rds_loader.py
-Upserts cleaned job data into AWS RDS PostgreSQL using SQLAlchemy.
+Loads cleaned job data into local PostgreSQL using SQLAlchemy.
 Uses fingerprint column for idempotent upserts — safe to re-run daily.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import os
+from dotenv import load_dotenv
 
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -14,20 +15,26 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from src.utils.logger import get_logger
 
+load_dotenv()
 log = get_logger(__name__)
 
 
 class RDSLoader:
-    def __init__(self, db_url: str):
+    def __init__(self):
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = os.getenv("DB_PORT", "5432")
+        db_name = os.getenv("DB_NAME", "jobmarket")
+        db_user = os.getenv("DB_USER", "pipeline_user")
+        db_password = os.getenv("DB_PASSWORD", "devpassword")
+
+        db_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
         self.engine: Engine = create_engine(
             db_url,
             pool_size=5,
             max_overflow=10,
-            pool_pre_ping=True,       # reconnect on stale connections
+            pool_pre_ping=True,
             connect_args={"connect_timeout": 10},
         )
-
-    # ── Public interface ──────────────────────────────────────────────────────
 
     def upsert_jobs(self, df: pd.DataFrame) -> int:
         """Insert new jobs; skip rows whose fingerprint already exists. Returns insert count."""
@@ -42,11 +49,9 @@ class RDSLoader:
             "salary_usd_mid", "remote_type", "seniority",
             "role_category", "skills", "url", "published_at", "collected_at",
         ]
-        # Keep only columns that exist in both schema and DataFrame
         safe_cols = [c for c in cols if c in df.columns]
         df_load = df[safe_cols].copy()
 
-        # Serialise skills list to Postgres array syntax
         df_load["skills"] = df_load["skills"].apply(
             lambda s: "{" + ",".join(f'"{x}"' for x in s) + "}" if isinstance(s, list) else "{}"
         )
@@ -97,31 +102,3 @@ class RDSLoader:
             return True
         except SQLAlchemyError:
             return False
-
-"""Load data to PostgreSQL RDS."""
-import pandas as pd
-from sqlalchemy import create_engine, text
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-class RDSLoader:
-    def __init__(self):
-        self.db_host = os.getenv("DB_HOST", "localhost")
-        self.db_port = os.getenv("DB_PORT", "5432")
-        self.db_name = os.getenv("DB_NAME", "jobmarket")
-        self.db_user = os.getenv("DB_USER", "pipeline_user")
-        self.db_password = os.getenv("DB_PASSWORD", "devpassword")
-        
-        db_url = f"postgresql+psycopg2://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
-        self.engine = create_engine(db_url)
-    
-    def load_df(self, df: pd.DataFrame, table: str = "jobs", if_exists: str = "append"):
-        """Load DataFrame into PostgreSQL table."""
-        df.to_sql(table, self.engine, if_exists=if_exists, index=False)
-        
-        with self.engine.connect() as conn:
-            count = conn.execute(text(f"SELECT COUNT(*) FROM {table};")).scalar()
-        
-        return count
