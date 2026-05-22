@@ -12,10 +12,10 @@ from src.utils.logger import get_logger
 
 log = get_logger(__name__)
 
-# Fallback rates relative to USD (updated periodically in code)
+# Fallback rates relative to USD (needs to periodically manualy update in code)
 FALLBACK_RATES: dict[str, float] = {
-    "KZT": 450.0,   # Kazakhstani tenge
-    "RUB": 90.0,    # Russian ruble
+    "KZT": 450.0,   # KZ tenge
+    "RUB": 90.0,    # RS ruble
     "USD": 1.0,
     "EUR": 0.92,
     "UAH": 38.0,
