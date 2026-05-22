@@ -1,10 +1,25 @@
 """
 configs/settings.py
-All configuration is read from environment variables (set in .env or Docker).
-Never hardcode secrets — this file only reads, never stores.
+All configuration is read from environment variables (set in .env).
 """
 import os
 from dataclasses import dataclass
+
+
+class MissingEnvironmentVariableError(Exception):
+    """Raised when a required environment variable is missing."""
+    pass
+
+
+def get_required_env(var_name: str) -> str:
+    """Get required environment variable with clear error message."""
+    value = os.environ.get(var_name)
+    if value is None:
+        raise MissingEnvironmentVariableError(
+            f"Required environment variable '{var_name}' is not set. "
+            f"Please check your .env file."
+        )
+    return value
 
 
 @dataclass(frozen=True)
@@ -42,20 +57,20 @@ class PipelineConfig:
 
 def load_aws() -> AWSConfig:
     return AWSConfig(
-        access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-        secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-        region=os.environ.get("AWS_REGION", "eu-west-1"),
-        s3_bucket=os.environ["S3_BUCKET_NAME"],
+        access_key_id=get_required_env("AWS_ACCESS_KEY_ID"),
+        secret_access_key=get_required_env("AWS_SECRET_ACCESS_KEY"),
+        region=os.environ.get("AWS_REGION"),
+        s3_bucket=get_required_env("S3_BUCKET_NAME"),
     )
 
 
 def load_db() -> DBConfig:
     return DBConfig(
-        host=os.environ["DB_HOST"],
+        host=get_required_env("DB_HOST"),
         port=int(os.environ.get("DB_PORT", 5432)),
         name=os.environ.get("DB_NAME", "jobmarket"),
-        user=os.environ["DB_USER"],
-        password=os.environ["DB_PASSWORD"],
+        user=get_required_env("DB_USER"),
+        password=get_required_env("DB_PASSWORD"),
     )
 
 
