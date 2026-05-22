@@ -1,0 +1,80 @@
+# docker-compose.yml
+# Runs the complete stack locally:
+#   pipeline  — ETL container (runs once and exits)
+#   dashboard — Streamlit app (stays up)
+#   db        — local PostgreSQL (mirrors RDS schema)
+#
+# For production, use AWS RDS instead of the local db service
+# and pass real AWS credentials via .env
+
+services:
+
+  # ── Local PostgreSQL (development only) ──────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: jobmarket_db
+    environment:
+      POSTGRES_DB: jobmarket
+      POSTGRES_USER: pipeline_user
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipeline_user -d jobmarket"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── ETL Pipeline ──────────────────────────────────────────────────────────
+  pipeline:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: jobmarket_pipeline
+    env_file: ../.env
+    environment:
+      # Override for local dev (points to the db container)
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: jobmarket
+      DB_USER: pipeline_user
+      DB_PASSWORD: devpassword
+      PIPELINE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../logs:/app/logs   # persist logs on host
+    restart: "no"           # run once; use cron/Airflow for scheduling
+
+  # ── Streamlit Dashboard ───────────────────────────────────────────────────
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: jobmarket_dashboard
+    command: ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    env_file: ../.env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: jobmarket
+      DB_USER: pipeline_user
+      DB_PASSWORD: devpassword
+      PIPELINE_ENV: development
+    ports:
+      - "8501:8501"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+
+networks:
+  default:
+    name: jobmarket_net
