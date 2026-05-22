@@ -17,7 +17,6 @@ from src.utils.logger import get_logger
 # Load .env from project root
 env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(env_path)
-print(os.environ.get("TELEGRAM_API_ID"))  # Should print your API ID, not None 
 log = get_logger(__name__)
 
 # ── Target channels ───────────────────────────────────────────────────────────
