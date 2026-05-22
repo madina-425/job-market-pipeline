@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from configs import settings
 from src.analytics.analytics import JobAnalytics
 from src.collectors.hh_collector import HHCollector
+from src.collectors.telegram_collector import TelegramCollector
 from src.loaders.rds_loader import RDSLoader
 from src.loaders.s3_loader import S3Loader
 from src.transformers.job_transformer import JobTransformer
@@ -46,8 +47,7 @@ def run():
 
     collectors = [
         ("headhunter", HHCollector()),
-        ("djinni", DjinniCollector()),
-        ("remoteok", RemoteOKCollector()),
+        ("telegram", TelegramCollector()),
     ]
 
     for source_name, collector in collectors:
