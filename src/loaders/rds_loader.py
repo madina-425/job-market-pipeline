@@ -52,36 +52,40 @@ class RDSLoader:
         safe_cols = [c for c in cols if c in df.columns]
         df_load = df[safe_cols].copy()
 
-        df_load["skills"] = df_load["skills"].apply(
-            lambda s: "{" + ",".join(f'"{x}"' for x in s) + "}" if isinstance(s, list) else "{}"
-        )
-
         inserted = 0
-        with self.engine.begin() as conn:
+        raw_conn = self.engine.raw_connection()
+        try:
+            cur = raw_conn.cursor()
             for _, row in df_load.iterrows():
                 try:
-                    result = conn.execute(
-                        text("""
-                            INSERT INTO jobs (
-                                external_id, fingerprint, source, title, company,
-                                location, country, salary_from, salary_to,
-                                salary_currency, salary_usd_from, salary_usd_to,
-                                salary_usd_mid, remote_type, seniority,
-                                role_category, skills, url, published_at, collected_at
-                            ) VALUES (
-                                :external_id, :fingerprint, :source, :title, :company,
-                                :location, :country, :salary_from, :salary_to,
-                                :salary_currency, :salary_usd_from, :salary_usd_to,
-                                :salary_usd_mid, :remote_type, :seniority,
-                                :role_category, :skills::text[], :url, :published_at, :collected_at
-                            )
-                            ON CONFLICT (fingerprint) DO NOTHING
-                        """),
-                        row.to_dict(),
-                    )
-                    inserted += result.rowcount
-                except SQLAlchemyError as exc:
+                    skills = row.get("skills")
+                    skills_array = "{" + ",".join(f'"{x}"' for x in skills) + "}" if isinstance(skills, list) else "{}"
+
+                    cur.execute("""
+                        INSERT INTO jobs (
+                            external_id, fingerprint, source, title, company,
+                            location, country, salary_from, salary_to,
+                            salary_currency, salary_usd_from, salary_usd_to,
+                            salary_usd_mid, remote_type, seniority,
+                            role_category, skills, url, published_at, collected_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::text[], %s, %s, %s)
+                        ON CONFLICT (fingerprint) DO NOTHING
+                    """, (
+                        row.get("external_id"), row.get("fingerprint"), row.get("source"),
+                        row.get("title"), row.get("company"), row.get("location"),
+                        row.get("country"), row.get("salary_from"), row.get("salary_to"),
+                        row.get("salary_currency"), row.get("salary_usd_from"), row.get("salary_usd_to"),
+                        row.get("salary_usd_mid"), row.get("remote_type"), row.get("seniority"),
+                        row.get("role_category"), skills_array, row.get("url"),
+                        row.get("published_at"), row.get("collected_at"),
+                    ))
+                    inserted += cur.rowcount
+                except Exception as exc:
                     log.error("RDS: insert failed for %s: %s", row.get("external_id"), exc)
+            raw_conn.commit()
+            cur.close()
+        finally:
+            raw_conn.close()
 
         log.info("RDS: inserted %d new jobs (skipped duplicates)", inserted)
         return inserted
