@@ -1,7 +1,7 @@
 """
 src/utils/logger.py
 Centralised logging setup. Every module calls get_logger(__name__).
-Logs go to stdout (captured by Docker / CloudWatch) and to logs/pipeline.log.
+Logs go to stdout (captured by GitHub Actions) and to logs/pipeline.log.
 """
 import logging
 import os
@@ -23,7 +23,7 @@ def get_logger(name: str) -> logging.Logger:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # stdout handler (captured by Docker / CloudWatch)
+    # stdout handler (captured by GitHub Actions)
     sh = logging.StreamHandler(sys.stdout)
     sh.setFormatter(fmt)
     logger.addHandler(sh)
