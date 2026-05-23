@@ -4,11 +4,17 @@ Streamlit dashboard for the Job Market Analytics Pipeline.
 Run: streamlit run dashboard/app.py
 """
 import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from sqlalchemy import create_engine, text
+
+from src.utils.currency import to_kzt
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -41,6 +47,15 @@ def query(sql: str) -> pd.DataFrame:
 # ── Sidebar filters ───────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Filters")
+
+    currency = st.radio(
+        "Currency",
+        ["USD", "KZT"],
+        horizontal=True,
+    )
+
+    st.divider()
+
     role_filter = st.multiselect(
         "Role",
         ["Data Analyst", "Data Engineer", "ML Engineer"],
@@ -75,7 +90,12 @@ avg_sal = kpi.iloc[0]["avg_sal"]
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total postings (90d)", f"{total_jobs:,}")
-col2.metric("Avg salary (USD/mo)", f"${avg_sal:,.0f}" if avg_sal else "N/A")
+
+if currency == "USD":
+    col2.metric("Avg salary (USD/mo)", f"${avg_sal:,.0f}" if avg_sal else "N/A")
+else:
+    avg_sal_kzt = to_kzt(avg_sal)
+    col2.metric("Avg salary (KZT/mo)", f"{avg_sal_kzt:,.0f}₸" if avg_sal_kzt else "N/A")
 
 remote_pct = query(f"""
     SELECT remote_type, COUNT(*) AS n FROM jobs {base_where}
@@ -125,10 +145,19 @@ with right:
         FROM jobs {base_where} AND salary_usd_mid IS NOT NULL
     """)
     if not sal_df.empty:
+        if currency == "KZT":
+            sal_df["salary_display"] = sal_df["salary_usd_mid"].apply(to_kzt)
+            y_col = "salary_display"
+            y_label = "Monthly salary (KZT)"
+        else:
+            sal_df["salary_display"] = sal_df["salary_usd_mid"]
+            y_col = "salary_display"
+            y_label = "Monthly salary (USD)"
+
         fig = px.box(
-            sal_df, x="role_category", y="salary_usd_mid",
+            sal_df, x="role_category", y=y_col,
             color="seniority",
-            labels={"salary_usd_mid": "Monthly salary (USD)", "role_category": ""},
+            labels={y_col: y_label, "role_category": ""},
             color_discrete_sequence=px.colors.qualitative.Set2,
         )
         fig.update_layout(height=500, margin=dict(l=0, r=0, t=0, b=0))
