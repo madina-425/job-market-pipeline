@@ -15,12 +15,12 @@ from dotenv import load_dotenv
 from src.utils.logger import get_logger
 
 # Load .env from project root
-env_path = Path(__file__).parent.parent.parent / ".env"
-load_dotenv(env_path)
+ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(ENV_PATH)
 log = get_logger(__name__)
 
 # ── Target channels ───────────────────────────────────────────────────────────
-TARGET_CHANNELS = [
+DEFAULT_CHANNELS = [
     "itcom_kz",      # IT community Kazakhstan — general IT jobs
     "fbrokerch",     # Freedom channel
     "ml_jobs_kz",    # Data Science / ML jobs KZ (bonus — very relevant)
@@ -28,27 +28,47 @@ TARGET_CHANNELS = [
 ]
 
 # Keywords to filter relevant messages
-TARGET_KEYWORDS = [
+DEFAULT_KEYWORDS = [
     "data analyst", "data engineer", "machine learning", "ml engineer",
     "аналитик данных", "инженер данных", "data science", "аналитик",
     "bi analyst", "etl", "analytics",
 ]
 
 # How many recent messages to fetch per channel
-MSG_LIMIT = 100
+DEFAULT_MSG_LIMIT = 100
+
+SKILL_KEYWORDS = [
+    "python", "sql", "spark", "kafka", "airflow", "dbt", "docker",
+    "kubernetes", "aws", "gcp", "azure", "tableau", "power bi", "looker",
+    "scikit-learn", "tensorflow", "pytorch", "pandas", "numpy",
+    "postgres", "postgresql", "mysql", "mongodb", "clickhouse",
+    "hadoop", "snowflake", "databricks", "git", "linux", "scala", "java",
+    "powerbi", "superset",
+]
 
 
 class TelegramCollector:
     """Scrapes public Telegram channels for job postings using Telethon."""
 
-    def __init__(self):
-        api_id = os.environ.get("TELEGRAM_API_ID")
+    def __init__(
+        self,
+        api_id: int | None = None,
+        api_hash: str | None = None,
+        channels: list[str] | None = None,
+        keywords: list[str] | None = None,
+        msg_limit: int = DEFAULT_MSG_LIMIT,
+    ):
+        api_id = api_id or os.environ.get("TELEGRAM_API_ID")
         if not api_id:
             raise ValueError("TELEGRAM_API_ID not found in environment variables")
         self.api_id = int(api_id)
-        self.api_hash = os.environ.get("TELEGRAM_API_HASH")
+        self.api_hash = api_hash or os.environ.get("TELEGRAM_API_HASH")
         if not self.api_hash:
             raise ValueError("TELEGRAM_API_HASH not found in environment variables")
+        self.channels = list(channels or DEFAULT_CHANNELS)
+        keywords = list(keywords or DEFAULT_KEYWORDS)
+        self.keywords = tuple(kw.lower() for kw in keywords)
+        self.msg_limit = msg_limit
 
     def collect(self) -> list[dict]:
         """Sync entry point — runs the async collector."""
@@ -65,7 +85,7 @@ class TelegramCollector:
 
         results: list[dict] = []
         async with TelegramClient("tg_session", self.api_id, self.api_hash) as client:
-            for channel in TARGET_CHANNELS:
+            for channel in self.channels:
                 log.info("Telegram: scraping @%s", channel)
                 try:
                     posts = await self._scrape_channel(client, channel)
@@ -80,7 +100,7 @@ class TelegramCollector:
     async def _scrape_channel(self, client, channel: str) -> list[dict]:
         """Fetch and filter recent messages from one channel."""
         posts = []
-        async for message in client.iter_messages(channel, limit=MSG_LIMIT):
+        async for message in client.iter_messages(channel, limit=self.msg_limit):
             if not message.text:
                 continue
             if not self._is_relevant(message.text):
@@ -92,7 +112,7 @@ class TelegramCollector:
 
     def _is_relevant(self, text: str) -> bool:
         text_lower = text.lower()
-        return any(kw in text_lower for kw in TARGET_KEYWORDS)
+        return any(kw in text_lower for kw in self.keywords)
 
     def _normalize(self, message, channel: str) -> dict:
         text = message.text or ""
@@ -166,7 +186,7 @@ def _extract_remote_type(text: str) -> str:
 
 def _extract_seniority(text: str) -> str:
     text_lower = text.lower()
-    if any(w in text_lower for w in ["senior", "senior", "lead", "principal"]):
+    if any(w in text_lower for w in ["senior", "lead", "principal"]):
         return "senior"
     if any(w in text_lower for w in ["junior", "стажёр", "intern", "trainee"]):
         return "junior"
@@ -208,14 +228,6 @@ def _parse_salary(text: str) -> tuple[int | None, int | None, str | None]:
 
 
 def _extract_skills(text: str) -> list[str]:
-    SKILL_KEYWORDS = [
-        "python", "sql", "spark", "kafka", "airflow", "dbt", "docker",
-        "kubernetes", "aws", "gcp", "azure", "tableau", "power bi", "looker",
-        "scikit-learn", "tensorflow", "pytorch", "pandas", "numpy",
-        "postgres", "postgresql", "mysql", "mongodb", "clickhouse",
-        "hadoop", "snowflake", "databricks", "git", "linux", "scala", "java",
-        "powerbi", "superset",
-    ]
     text_lower = text.lower()
     return [kw for kw in SKILL_KEYWORDS if re.search(r"\b" + re.escape(kw) + r"\b", text_lower)]
 

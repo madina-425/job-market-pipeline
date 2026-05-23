@@ -26,30 +26,26 @@ class S3Loader:
 
     def save_raw(self, jobs: list[dict], source: str) -> str | None:
         """Upload raw job list as JSON. Returns S3 key or None on failure."""
-        now = datetime.now(timezone.utc)
-        key = (
-            f"raw/{source}/"
-            f"{now.year}/{now.month:02d}/{now.day:02d}/"
-            f"jobs_{now.strftime('%H-%M-%S')}.json"
+        now = self._utc_now()
+        key = self._build_dated_key(
+            f"raw/{source}",
+            f"jobs_{now.strftime('%H-%M-%S')}.json",
+            now,
         )
         payload = json.dumps(jobs, ensure_ascii=False, default=str).encode("utf-8")
         return self._upload(payload, key, "application/json")
 
     def save_processed(self, df: pd.DataFrame) -> str | None:
         """Upload cleaned DataFrame as Parquet."""
-        now = datetime.now(timezone.utc)
-        key = (
-            f"processed/"
-            f"{now.year}/{now.month:02d}/{now.day:02d}/"
-            f"jobs_clean.parquet"
-        )
+        now = self._utc_now()
+        key = self._build_dated_key("processed", "jobs_clean.parquet", now)
         buf = BytesIO()
         df.to_parquet(buf, index=False, engine="pyarrow")
         return self._upload(buf.getvalue(), key, "application/octet-stream")
 
     def save_report(self, report: dict) -> str | None:
         """Upload a daily analytics report as JSON."""
-        now = datetime.now(timezone.utc)
+        now = self._utc_now()
         key = f"reports/{now.strftime('%Y-%m-%d')}/summary.json"
         payload = json.dumps(report, ensure_ascii=False, default=str).encode("utf-8")
         return self._upload(payload, key, "application/json")
@@ -70,3 +66,15 @@ class S3Loader:
         except (BotoCoreError, ClientError) as exc:
             log.error("S3 upload failed for key %s: %s", key, exc)
             return None
+
+    @staticmethod
+    def _utc_now() -> datetime:
+        return datetime.now(timezone.utc)
+
+    @staticmethod
+    def _build_dated_key(prefix: str, filename: str, now: datetime) -> str:
+        return (
+            f"{prefix}/"
+            f"{now.year}/{now.month:02d}/{now.day:02d}/"
+            f"{filename}"
+        )

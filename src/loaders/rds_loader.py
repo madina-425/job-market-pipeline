@@ -9,6 +9,7 @@ import os
 from dotenv import load_dotenv
 
 import pandas as pd
+from psycopg2 import Error as PsycopgError
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -17,6 +18,25 @@ from src.utils.logger import get_logger
 
 load_dotenv()
 log = get_logger(__name__)
+
+JOB_COLUMNS = [
+    "external_id", "fingerprint", "source", "title", "company",
+    "location", "country", "salary_from", "salary_to",
+    "salary_currency", "salary_usd_from", "salary_usd_to",
+    "salary_usd_mid", "remote_type", "seniority",
+    "role_category", "skills", "url", "published_at", "collected_at",
+]
+
+INSERT_SQL = """
+    INSERT INTO jobs (
+        external_id, fingerprint, source, title, company,
+        location, country, salary_from, salary_to,
+        salary_currency, salary_usd_from, salary_usd_to,
+        salary_usd_mid, remote_type, seniority,
+        role_category, skills, url, published_at, collected_at
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (fingerprint) DO NOTHING
+"""
 
 
 class RDSLoader:
@@ -37,58 +57,45 @@ class RDSLoader:
         )
 
     def upsert_jobs(self, df: pd.DataFrame) -> int:
-        """Insert new jobs; skip rows whose fingerprint already exists. Returns insert count."""
+        """Batch insert new jobs; skip duplicates via fingerprint. Returns insert count."""
         if df.empty:
             log.warning("RDS: received empty DataFrame — nothing to load")
             return 0
 
-        cols = [
-            "external_id", "fingerprint", "source", "title", "company",
-            "location", "country", "salary_from", "salary_to",
-            "salary_currency", "salary_usd_from", "salary_usd_to",
-            "salary_usd_mid", "remote_type", "seniority",
-            "role_category", "skills", "url", "published_at", "collected_at",
-        ]
-        safe_cols = [c for c in cols if c in df.columns]
-        df_load = df[safe_cols].copy()
+        rows = self._prepare_rows(df)
+        if not rows:
+            return 0
 
-        inserted = 0
         raw_conn = self.engine.raw_connection()
+        cur = None
         try:
             cur = raw_conn.cursor()
-            for _, row in df_load.iterrows():
-                try:
-                    skills = row.get("skills")
-                    skills_array = "{" + ",".join(f'"{x}"' for x in skills) + "}" if isinstance(skills, list) else "{}"
-
-                    cur.execute("""
-                        INSERT INTO jobs (
-                            external_id, fingerprint, source, title, company,
-                            location, country, salary_from, salary_to,
-                            salary_currency, salary_usd_from, salary_usd_to,
-                            salary_usd_mid, remote_type, seniority,
-                            role_category, skills, url, published_at, collected_at
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::text[], %s, %s, %s)
-                        ON CONFLICT (fingerprint) DO NOTHING
-                    """, (
-                        row.get("external_id"), row.get("fingerprint"), row.get("source"),
-                        row.get("title"), row.get("company"), row.get("location"),
-                        row.get("country"), row.get("salary_from"), row.get("salary_to"),
-                        row.get("salary_currency"), row.get("salary_usd_from"), row.get("salary_usd_to"),
-                        row.get("salary_usd_mid"), row.get("remote_type"), row.get("seniority"),
-                        row.get("role_category"), skills_array, row.get("url"),
-                        row.get("published_at"), row.get("collected_at"),
-                    ))
-                    inserted += cur.rowcount
-                except Exception as exc:
-                    log.error("RDS: insert failed for %s: %s", row.get("external_id"), exc)
+            cur.executemany(INSERT_SQL, rows)
             raw_conn.commit()
-            cur.close()
+            inserted = cur.rowcount
+        except PsycopgError as exc:
+            raw_conn.rollback()
+            log.error("RDS: batch insert failed: %s", exc)
+            inserted = 0
         finally:
+            if cur:
+                cur.close()
             raw_conn.close()
 
         log.info("RDS: inserted %d new jobs (skipped duplicates)", inserted)
         return inserted
+
+    @staticmethod
+    def _prepare_rows(df: pd.DataFrame) -> list[tuple]:
+        df_load = df.reindex(columns=JOB_COLUMNS, fill_value=None)
+        skills_idx = JOB_COLUMNS.index("skills")
+        rows: list[tuple] = []
+        for row in df_load.itertuples(index=False, name=None):
+            row_list = list(row)
+            skills = row_list[skills_idx]
+            row_list[skills_idx] = list(skills) if isinstance(skills, list) else []
+            rows.append(tuple(row_list))
+        return rows
 
     def load_for_analytics(self, query: str) -> pd.DataFrame:
         """Run an arbitrary SELECT and return a DataFrame. Used by analytics module."""
