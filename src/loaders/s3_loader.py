@@ -1,19 +1,6 @@
 """
 src/loaders/s3_loader.py
-Saves raw (pre-transform) job data as JSON to AWS S3.
-
-S3 folder structure:
-  s3://{bucket}/
-    raw/
-      {source}/
-        {YYYY}/{MM}/{DD}/
-          jobs_{HH-MM-SS}.json
-    processed/
-      {YYYY}/{MM}/{DD}/
-        jobs_clean.parquet
-    reports/
-      {YYYY-MM-DD}/
-        summary.json
+Uploads raw and processed job data to AWS S3.
 """
 from __future__ import annotations
 
@@ -35,7 +22,7 @@ class S3Loader:
         self.bucket = bucket
         self.client = boto3.client("s3", region_name=region)
 
-    # ── Public interface ──────────────────────────────────────────────────────
+    # ── Write ─────────────────────────────────────────────────────────────────
 
     def save_raw(self, jobs: list[dict], source: str) -> str | None:
         """Upload raw job list as JSON. Returns S3 key or None on failure."""
@@ -76,7 +63,7 @@ class S3Loader:
                 Key=key,
                 Body=data,
                 ContentType=content_type,
-                ServerSideEncryption="AES256",   # encrypt at rest
+                ServerSideEncryption="AES256",
             )
             log.info("S3: uploaded s3://%s/%s (%d bytes)", self.bucket, key, len(data))
             return key
