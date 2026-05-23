@@ -12,7 +12,7 @@ from src.utils.logger import get_logger
 
 log = get_logger(__name__)
 
-# Fallback rates relative to USD (needs to periodically manualy update in code)
+# Fallback rates relative to USD (needs to periodically update in code)
 FALLBACK_RATES: dict[str, float] = {
     "KZT": 450.0,   # KZ tenge
     "RUB": 90.0,    # RS ruble
@@ -51,3 +51,11 @@ def to_usd(amount: float | None, currency: str | None) -> float | None:
         log.debug("Unknown currency %s", currency)
         return None
     return round(amount / rates[currency], 2)
+
+def to_kzt(amount_usd: float | None) -> float | None:
+    """Конвертирует USD → KZT."""
+    if amount_usd is None:
+        return None
+    rates = get_rates()
+    kzt_rate = rates.get("KZT", FALLBACK_RATES["KZT"])
+    return round(amount_usd * kzt_rate, 0)
