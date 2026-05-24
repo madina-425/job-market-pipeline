@@ -6,7 +6,6 @@ Uses fingerprint column for idempotent upserts — safe to re-run daily.
 from __future__ import annotations
 
 import os
-from dotenv import load_dotenv
 
 import pandas as pd
 from psycopg2 import Error as PsycopgError
@@ -16,7 +15,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from src.utils.logger import get_logger
 
-load_dotenv()
 log = get_logger(__name__)
 
 JOB_COLUMNS = [

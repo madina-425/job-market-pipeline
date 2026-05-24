@@ -14,11 +14,8 @@ from pathlib import Path
 from typing import Generator
 
 import requests
-from dotenv import load_dotenv
-
 from src.utils.logger import get_logger
 
-load_dotenv()
 log = get_logger(__name__)
 
 # HeadHunter area ID for Kazakhstan
@@ -225,10 +222,3 @@ def _map_experience(exp_id: str | None) -> str:
         "moreThan6": "senior",
     }
     return mapping.get(exp_id or "", "unknown")
-
-if __name__ == "__main__":
-    collector = HHCollector()
-    vacancies = collector.collect()
-    print(f"Collected {len(vacancies)} vacancies")
-    if vacancies:
-        print(vacancies[0])

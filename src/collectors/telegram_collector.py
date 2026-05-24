@@ -8,15 +8,8 @@ import asyncio
 import os
 import re
 from datetime import datetime, timezone
-from pathlib import Path
-
-from dotenv import load_dotenv
-
 from src.utils.logger import get_logger
 
-# Load .env from project root
-ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
-load_dotenv(ENV_PATH)
 log = get_logger(__name__)
 
 # ── Target channels ───────────────────────────────────────────────────────────
@@ -230,14 +223,3 @@ def _parse_salary(text: str) -> tuple[int | None, int | None, str | None]:
 def _extract_skills(text: str) -> list[str]:
     text_lower = text.lower()
     return [kw for kw in SKILL_KEYWORDS if re.search(r"\b" + re.escape(kw) + r"\b", text_lower)]
-
-
-if __name__ == "__main__":
-    collector = TelegramCollector()
-    vacancies = collector.collect()
-    print(f"\nCollected {len(vacancies)} vacancies")
-    if vacancies:
-        print("\nSample post:")
-        for key, value in vacancies[0].items():
-            if key != "description":
-                print(f"  {key}: {value}")
