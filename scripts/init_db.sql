@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     id              SERIAL PRIMARY KEY,
     external_id     TEXT NOT NULL,
     fingerprint     TEXT NOT NULL UNIQUE,
-    source          TEXT NOT NULL,                -- headhunter | djinni | remoteok
+    source          TEXT NOT NULL,          -- hh, telegram
     title           TEXT,
     company         TEXT,
     location        TEXT,
@@ -38,75 +38,9 @@ CREATE INDEX IF NOT EXISTS idx_jobs_published_at    ON jobs(published_at);
 CREATE INDEX IF NOT EXISTS idx_jobs_remote_type     ON jobs(remote_type);
 CREATE INDEX IF NOT EXISTS idx_jobs_location        ON jobs(location);
 
--- ── Analytics materialised views ─────────────────────────────────────────────
-
--- Top skills per role (unnest the array, count occurrences)
-CREATE MATERIALIZED VIEW IF NOT EXISTS mv_skill_demand AS
-    SELECT
-        role_category,
-        skill,
-        COUNT(*)::INT AS frequency
-    FROM jobs,
-         UNNEST(skills) AS skill
-    WHERE published_at >= now() - INTERVAL '90 days'
-    GROUP BY role_category, skill
-    ORDER BY frequency DESC;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_skill_demand ON mv_skill_demand(role_category, skill);
-
--- Salary summary by role + seniority
-CREATE MATERIALIZED VIEW IF NOT EXISTS mv_salary_summary AS
-    SELECT
-        role_category,
-        seniority,
-        COUNT(*)                            AS job_count,
-        ROUND(AVG(salary_usd_mid)::NUMERIC, 0) AS avg_salary_usd,
-        ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY salary_usd_mid)::NUMERIC, 0) AS median_salary_usd,
-        ROUND(MIN(salary_usd_mid)::NUMERIC, 0) AS min_salary_usd,
-        ROUND(MAX(salary_usd_mid)::NUMERIC, 0) AS max_salary_usd
-    FROM jobs
-    WHERE salary_usd_mid IS NOT NULL
-      AND published_at >= now() - INTERVAL '90 days'
-    GROUP BY role_category, seniority;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_salary_summary ON mv_salary_summary(role_category, seniority);
-
--- Remote work distribution
-CREATE MATERIALIZED VIEW IF NOT EXISTS mv_remote_trends AS
-    SELECT
-        DATE_TRUNC('week', published_at) AS week,
-        remote_type,
-        COUNT(*)::INT                    AS job_count
-    FROM jobs
-    WHERE published_at >= now() - INTERVAL '90 days'
-    GROUP BY week, remote_type
-    ORDER BY week;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_remote_trends ON mv_remote_trends(week, remote_type);
-
--- City-level hiring
-CREATE MATERIALIZED VIEW IF NOT EXISTS mv_city_hiring AS
-    SELECT
-        location,
-        role_category,
-        COUNT(*)::INT AS job_count
-    FROM jobs
-    WHERE location IS NOT NULL
-      AND published_at >= now() - INTERVAL '90 days'
-    GROUP BY location, role_category
-    ORDER BY job_count DESC;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_city_hiring ON mv_city_hiring(location, role_category);
-
--- ── Refresh helper (call after each pipeline run) ─────────────────────────────
-
--- REFRESH MATERIALIZED VIEW CONCURRENTLY mv_skill_demand;
--- REFRESH MATERIALIZED VIEW CONCURRENTLY mv_salary_summary;
--- REFRESH MATERIALIZED VIEW CONCURRENTLY mv_remote_trends;
--- REFRESH MATERIALIZED VIEW CONCURRENTLY mv_city_hiring;
-
 -- ── Read-only application user ────────────────────────────────────────────────
--- Run as superuser:
+-- Run as superuser: 
+-- хочу оставить для аус рдс
 
 -- CREATE ROLE pipeline_user LOGIN PASSWORD 'change_me';
 -- GRANT CONNECT ON DATABASE jobmarket TO pipeline_user;
