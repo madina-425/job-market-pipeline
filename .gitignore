@@ -9,10 +9,10 @@ __pycache__/
 dist/
 build/
 
-# Environment variables (never commit this!)
+# Environment variables
 .env
 
-# Telegram session file (contains your auth token)
+# Telegram session file
 *.session
 
 # Database
@@ -36,4 +36,6 @@ logs/
 *.csv
 *.parquet
 
+# others
 *.hh_token_cache
+*.session

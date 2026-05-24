@@ -11,7 +11,6 @@ import time
 from datetime import datetime, timezone
 
 from configs import settings
-from src.analytics.analytics import JobAnalytics
 from src.collectors.hh_collector import HHCollector
 from src.collectors.telegram_collector import TelegramCollector
 from src.loaders.rds_loader import RDSLoader
@@ -77,13 +76,6 @@ def run():
     log.info("Stage: LOAD")
     inserted = rds.upsert_jobs(clean_df)
     log.info("Load complete: %d new jobs inserted", inserted)
-
-    # ── ANALYTICS ─────────────────────────────────────────────────────────────
-    log.info("Stage: ANALYTICS")
-    analytics.refresh_views()
-    summary = analytics.build_summary_report()
-    s3.save_report(summary)
-    log.info("Analytics: summary report saved to S3")
 
     elapsed = round(time.time() - start, 1)
     log.info("Pipeline finished in %ss", elapsed)
