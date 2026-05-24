@@ -250,24 +250,3 @@ def _midpoint(a: float | None, b: float | None) -> float | None:
     if b is not None:
         return b
     return None
-
-if __name__ == "__main__":
-    from src.collectors.hh_collector import HHCollector
-    from src.collectors.telegram_collector import TelegramCollector
-    from src.transformers.job_transformer import JobTransformer
-
-    # Collect from all sources
-    hh = HHCollector().collect()
-    telegram = TelegramCollector().collect()
-
-    # Combine all raw jobs
-    all_raw = hh + telegram
-    print(f"Total raw jobs: {len(all_raw)}")
-
-    # Transform once
-    df = JobTransformer().transform(all_raw)
-    print(f"Clean jobs after dedup: {len(df)}")
-
-    # Save
-    df.to_csv("all_jobs_clean.csv", index=False)
-    df.to_parquet("all_jobs_clean.parquet")  # Better for large datasets
