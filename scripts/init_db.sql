@@ -82,6 +82,8 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS mv_remote_trends AS
     GROUP BY week, remote_type
     ORDER BY week;
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_remote_trends ON mv_remote_trends(week, remote_type);
+
 -- City-level hiring
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_city_hiring AS
     SELECT
@@ -93,6 +95,8 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS mv_city_hiring AS
       AND published_at >= now() - INTERVAL '90 days'
     GROUP BY location, role_category
     ORDER BY job_count DESC;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_city_hiring ON mv_city_hiring(location, role_category);
 
 -- ── Refresh helper (call after each pipeline run) ─────────────────────────────
 

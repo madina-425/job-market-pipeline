@@ -2,7 +2,7 @@
 pipelines/etl_pipeline.py
 Orchestrates the full Extract → Transform → Load pipeline.
 Run directly:  python -m pipelines.etl_pipeline
-Or via Airflow / GitHub Actions (see .github/workflows/pipeline.yml).
+Or via GitHub Actions (see .github/workflows/pipeline.yml).
 """
 from __future__ import annotations
 
