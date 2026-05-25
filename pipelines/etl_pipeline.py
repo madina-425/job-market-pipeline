@@ -34,7 +34,6 @@ def run():
     s3 = S3Loader(bucket=aws_cfg.s3_bucket, region=aws_cfg.region)
     rds = RDSLoader()
     transformer = JobTransformer()
-    analytics = JobAnalytics(rds)
 
     if not rds.health_check():
         log.error("RDS health check failed — aborting pipeline")
