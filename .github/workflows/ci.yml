@@ -35,6 +35,7 @@ jobs:
 
       - name: Run tests
         env:
+          PYTHONPATH: ${{ github.workspace }}
           LOG_LEVEL: WARNING
           PIPELINE_ENV: development
           # Dummy values — tests use mocks, no real DB/AWS needed
