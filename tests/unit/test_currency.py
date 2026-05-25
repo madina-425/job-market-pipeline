@@ -1,4 +1,5 @@
 import os
+
 api_key = os.environ.get("EXCHANGE_RATE_API_KEY", "")
 from src.utils.currency import get_rates, to_usd
 

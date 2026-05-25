@@ -4,8 +4,8 @@ Unit tests for the JobTransformer.
 Run: pytest tests/ -v
 """
 import pytest
-from src.transformers.job_transformer import JobTransformer, _strip_html, _midpoint
 
+from src.transformers.job_transformer import JobTransformer, _midpoint, _strip_html
 
 SAMPLE_JOBS = [
     {

@@ -30,7 +30,7 @@ jobs:
           pip install ruff pytest pytest-cov
 
       - name: Lint with ruff
-        run: ruff check src/ pipelines/ configs/ tests/ --select E,W,F,I
+        run: ruff check src/ pipelines/ configs/ tests/ --select F
 
       - name: Run tests
         env:

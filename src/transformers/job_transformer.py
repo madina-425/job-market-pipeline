@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+
 import pandas as pd
 
 from src.utils.currency import to_usd

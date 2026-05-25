@@ -4,10 +4,12 @@ Unit tests for RDSLoader batch insert improvements.
 Tests batch insert, error handling, and skill array conversion.
 Run: pytest tests/unit/test_rds_loader_batch.py -v
 """
-import pytest
-import pandas as pd
-from psycopg2 import Error as PsycopgError
 from unittest.mock import MagicMock, patch
+
+import pandas as pd
+import pytest
+from psycopg2 import Error as PsycopgError
+
 from src.loaders.rds_loader import RDSLoader
 
 
