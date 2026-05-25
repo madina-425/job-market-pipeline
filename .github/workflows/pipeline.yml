@@ -42,7 +42,7 @@ jobs:
           HH_USER_AGENT:         ${{ secrets.HH_USER_AGENT }}
           EXCHANGE_RATE_API_KEY: ${{ secrets.EXCHANGE_RATE_API_KEY }}
           LOG_LEVEL:             INFO
-          PIPELINE_ENV:          дев
+          PIPELINE_ENV:          prod
         run: python -m pipelines.etl_pipeline
 
       - name: Upload logs as artifact
