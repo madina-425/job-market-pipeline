@@ -4,11 +4,12 @@ stages:
 image: python:3.12-slim
 
 cache:
-    paths:
+    paths: 
         - .cache/pip/
 
 variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+    PYTHONPATH: "$CI_PROJECT_DIR"
 
 test:
     stage: test
