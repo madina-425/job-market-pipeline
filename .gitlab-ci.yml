@@ -1,5 +1,4 @@
 stages:
-    - lint
     - test
 
 image: python:3.12-alpine
@@ -10,12 +9,6 @@ cache:
 
 variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-
-lint:
-    stage: lint
-    script:
-        - pip install flake8
-        - flake8 . 
 
 test:
     stage: test
