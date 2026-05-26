@@ -4,6 +4,13 @@ stages:
 
 image: python:3.12-alpine
 
+cache:
+    paths:
+        - ./cache/pip/
+
+variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
 lint:
     stage: lint
     script:
@@ -13,9 +20,6 @@ lint:
 test:
     stage: test
     before_script:
-    - pip install -r requirements.txt
+        - pip install -r requirements.txt
     script:
         - pytest
-
-
-
