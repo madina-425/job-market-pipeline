@@ -1,0 +1,21 @@
+stages:
+    - lint
+    - test
+
+image: python:3.12-alpine
+
+lint:
+    stage: lint
+    script:
+        - pip install flake8
+        - flake8 . 
+
+test:
+    stage: test
+    before_script:
+    - pip install -r requirements.txt
+    script:
+        - pytest
+
+
+
