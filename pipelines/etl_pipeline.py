@@ -44,7 +44,9 @@ def run():
     log.info("Stage: EXTRACT")
     all_raw: list[dict] = []
 
-    collectors: list[tuple[str, object]] = [("headhunter", HHCollector())]
+    collectors: list[tuple[str, HHCollector | TelegramCollector]] = [
+        ("headhunter", HHCollector())
+    ]
     if os.environ.get("TELEGRAM_API_ID") and os.environ.get("TELEGRAM_API_HASH"):
         collectors.append(("telegram", TelegramCollector()))
     else:
