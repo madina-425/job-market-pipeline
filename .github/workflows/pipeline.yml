@@ -1,13 +1,16 @@
-# .github/workflows/pipeline.yml
-# Runs the ETL pipeline every day at 06:00 UTC.
-# Also triggered manually via workflow_dispatch.
+# Daily ETL run (06:00 UTC) and manual trigger from the Actions tab.
+# Requires repository secrets — see env block below.
 
 name: Daily ETL Pipeline
 
 on:
   schedule:
-    - cron: "0 6 * * *"   # 06:00 UTC = 12:00 Almaty time
-  workflow_dispatch:        # allows manual trigger from GitHub UI
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: etl-pipeline
+  cancel-in-progress: false
 
 jobs:
   etl:
@@ -30,31 +33,33 @@ jobs:
 
       - name: Run pipeline
         env:
-          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          PYTHONPATH: ${{ github.workspace }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION:            ${{ secrets.AWS_REGION }}
-          S3_BUCKET_NAME:        ${{ secrets.S3_BUCKET_NAME }}
-          DB_HOST:               ${{ secrets.DB_HOST }}
-          DB_PORT:               ${{ secrets.DB_PORT }}
-          DB_NAME:               ${{ secrets.DB_NAME }}
-          DB_USER:               ${{ secrets.DB_USER }}
-          DB_PASSWORD:           ${{ secrets.DB_PASSWORD }}
-          HH_USER_AGENT:         ${{ secrets.HH_USER_AGENT }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'eu-west-1' }}
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT || '5432' }}
+          DB_NAME: ${{ secrets.DB_NAME || 'jobmarket' }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          HH_USER_AGENT: ${{ secrets.HH_USER_AGENT }}
           EXCHANGE_RATE_API_KEY: ${{ secrets.EXCHANGE_RATE_API_KEY }}
-          LOG_LEVEL:             INFO
-          PIPELINE_ENV:          production
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          LOG_LEVEL: INFO
+          PIPELINE_ENV: production
         run: python -m pipelines.etl_pipeline
 
       - name: Upload logs as artifact
-        if: always()   # upload even on failure for debugging
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pipeline-logs-${{ github.run_id }}
           path: logs/pipeline.log
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Notify on failure
         if: failure()
-        run: |
-          echo "Pipeline FAILED — check logs artifact above"
-          # Add Slack/email notification here if desired
+        run: echo "Pipeline FAILED — check the pipeline-logs artifact for details."

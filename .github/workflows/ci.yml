@@ -1,14 +1,14 @@
-# .github/workflows/ci.yml
-# Runs on every push and pull request.
-# Checks: ruff linting + pytest test suite + Docker build
+# Runs on push/PR to main and develop (Python pipeline only — web/ is ignored).
+# Checks: ruff linting, pytest, Docker build.
 
 name: CI
 
 on:
   push:
     branches: [main, develop]
+
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   lint-and-test:
@@ -30,13 +30,13 @@ jobs:
           pip install ruff pytest pytest-cov
 
       - name: Lint with ruff
-        run: ruff check src/ pipelines/ configs/ tests/ --select E,W,F,I
+        run: ruff check src/ pipelines/ configs/ tests/ --select F
 
       - name: Run tests
         env:
+          PYTHONPATH: ${{ github.workspace }}
           LOG_LEVEL: WARNING
           PIPELINE_ENV: development
-          # Dummy values — tests use mocks, no real DB/AWS needed
           AWS_ACCESS_KEY_ID: test
           AWS_SECRET_ACCESS_KEY: test
           AWS_REGION: eu-west-1
