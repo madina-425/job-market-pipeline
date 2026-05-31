@@ -39,12 +39,24 @@ INSERT_SQL = """
 class RDSLoader:
     def __init__(self):
         db_cfg = settings.load_db()
+        self._db_cfg = db_cfg
+        connect_args: dict[str, object] = {"connect_timeout": 10}
+        if db_cfg.sslmode:
+            connect_args["sslmode"] = db_cfg.sslmode
+
+        log.info(
+            "RDS: connecting to %s:%s/%s as %s",
+            db_cfg.host,
+            db_cfg.port,
+            db_cfg.name,
+            db_cfg.user,
+        )
         self.engine: Engine = create_engine(
             db_cfg.url,
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
-            connect_args={"connect_timeout": 10},
+            connect_args=connect_args,
         )
 
     def upsert_jobs(self, df: pd.DataFrame) -> int:
@@ -101,6 +113,14 @@ class RDSLoader:
         try:
             with self.engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
+            log.info("RDS: connection OK")
             return True
-        except SQLAlchemyError:
+        except SQLAlchemyError as exc:
+            log.error(
+                "RDS: connection failed (%s:%s/%s): %s",
+                self._db_cfg.host,
+                self._db_cfg.port,
+                self._db_cfg.name,
+                exc,
+            )
             return False

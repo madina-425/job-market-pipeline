@@ -5,6 +5,8 @@ All configuration is read from environment variables (set in .env).
 import os
 from dataclasses import dataclass
 
+from sqlalchemy.engine import URL
+
 
 class MissingEnvironmentVariableError(Exception):
     """Raised when a required environment variable is missing."""
@@ -14,12 +16,12 @@ class MissingEnvironmentVariableError(Exception):
 def get_required_env(var_name: str) -> str:
     """Get required environment variable with clear error message."""
     value = os.environ.get(var_name)
-    if value is None:
+    if value is None or not value.strip():
         raise MissingEnvironmentVariableError(
-            f"Required environment variable '{var_name}' is not set. "
-            f"Please check your .env file."
+            f"Required environment variable '{var_name}' is not set or empty. "
+            f"Please check your .env file or GitHub Secrets."
         )
-    return value
+    return value.strip()
 
 
 @dataclass(frozen=True)
@@ -37,13 +39,18 @@ class DBConfig:
     name: str
     user: str
     password: str
+    sslmode: str | None = None
 
     @property
     def url(self) -> str:
-        return (
-            f"postgresql+psycopg2://{self.user}:{self.password}"
-            f"@{self.host}:{self.port}/{self.name}"
-        )
+        return URL.create(
+            drivername="postgresql+psycopg2",
+            username=self.user,
+            password=self.password,
+            host=self.host,
+            port=self.port,
+            database=self.name,
+        ).render_as_string(hide_password=False)
 
 
 @dataclass(frozen=True)
@@ -65,12 +72,19 @@ def load_aws() -> AWSConfig:
 
 
 def load_db() -> DBConfig:
+    db_name = os.environ.get("DB_NAME", "jobmarket")
+    if not db_name.strip():
+        raise MissingEnvironmentVariableError(
+            "Required environment variable 'DB_NAME' is not set or empty."
+        )
+    sslmode = os.environ.get("DB_SSLMODE")
     return DBConfig(
         host=get_required_env("DB_HOST"),
         port=int(os.environ.get("DB_PORT", 5432)),
-        name=os.environ.get("DB_NAME", "jobmarket"),
+        name=db_name.strip(),
         user=get_required_env("DB_USER"),
         password=get_required_env("DB_PASSWORD"),
+        sslmode=sslmode.strip() if sslmode and sslmode.strip() else None,
     )
 
 
