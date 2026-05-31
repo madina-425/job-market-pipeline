@@ -1,36 +1,83 @@
-# Runs on push/PR to main and develop (Python pipeline only — web/ is ignored).
-# Checks: ruff linting, pytest, Docker build.
+# Runs on push/PR to main and develop branches.
 
 name: CI
 
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - "web/**"
+      - "**.md"
+      - ".gitignore"
 
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - "web/**"
+      - "**.md"
+      - ".gitignore"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true # только для дев бранча, в main его надо убрать
+
+env:
+  PYTHON_VERSION: "3.12"
 
 jobs:
-  lint-and-test:
-    name: Lint + Test
+  # lint testing
+  lint:
+    name: Lint (ruff)
     runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: "pip"
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache ruff installation
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: lint-${{ runner.os }}-ruff-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            lint-${{ runner.os }}-ruff-
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint with ruff
+        run: ruff check src/ pipelines/ configs/ tests/ --select F --output-format=github
+
+# testing
+  test:
+    name: Test (pytest)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # Cache keyed on requirements.txt — invalidates automatically when deps change.
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: test-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            test-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install ruff pytest pytest-cov
-
-      - name: Lint with ruff
-        run: ruff check src/ pipelines/ configs/ tests/ --select F
+          pip install pytest pytest-cov
 
       - name: Run tests
         env:
@@ -44,18 +91,101 @@ jobs:
           DB_HOST: localhost
           DB_USER: test
           DB_PASSWORD: test
-        run: pytest tests/ -v --cov=src --cov-report=term-missing
+        run: |
+          pytest tests/ -v \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --junitxml=reports/junit.xml
 
-  docker-build:
-    name: Docker build check
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()   # upload even on test failure,for inspect it
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          retention-days: 14
+
+      - name: Upload JUnit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-results
+          path: reports/junit.xml
+          retention-days: 14
+
+# smoke test
+  smoke-test:
+    name: Smoke test
     runs-on: ubuntu-24.04
-    needs: lint-and-test
+    needs: [lint, test]
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: test-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            test-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify top-level imports
+        run: |
+          python -c "
+          import src.pipeline
+          import src.models
+          # add your real top-level modules here
+          print('imports OK')
+          "
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Dry-run pipeline entrypoint
+        run: python -m src.pipeline --dry-run
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          PIPELINE_ENV: development
+          LOG_LEVEL: WARNING
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: eu-west-1
+          S3_BUCKET_NAME: test-bucket
+          DB_HOST: localhost
+          DB_USER: test
+          DB_PASSWORD: test
+
+  # docker build ────────────────────────────────────────────────────────
+  docker-build:
+    name: Docker build check
+    runs-on: ubuntu-24.04
+    needs: [smoke-test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Layer cache: dramatically speeds up re-builds when only app code changes.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build Docker image
-        run: docker build -f docker/Dockerfile -t jobmarket-pipeline:ci .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          tags: jobmarket-pipeline:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Verify image
         run: docker run --rm jobmarket-pipeline:ci python -c "import pandas, boto3, sqlalchemy; print('imports OK')"
