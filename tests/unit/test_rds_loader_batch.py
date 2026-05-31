@@ -14,7 +14,11 @@ from src.loaders.rds_loader import RDSLoader
 @pytest.fixture
 def mock_rds_loader():
     """Create RDSLoader with mocked engine."""
-    with patch('src.loaders.rds_loader.create_engine'):
+    mock_db_cfg = MagicMock()
+    mock_db_cfg.url = "postgresql+psycopg2://user:pass@testhost:5432/testdb"
+    with patch("src.loaders.rds_loader.create_engine"), patch(
+        "src.loaders.rds_loader.settings.load_db", return_value=mock_db_cfg
+    ):
         loader = RDSLoader()
         return loader
 
