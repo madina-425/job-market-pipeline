@@ -1,12 +1,19 @@
 """
 src/utils/logger.py
 Centralised logging setup. Every module calls get_logger(__name__).
-Logs go to stdout (captured by GitHub Actions) and to logs/pipeline.log.
+Logs go to stdout (GitHub Actions) and to logs/pipeline.log (rotated).
 """
 import logging
 import os
 import sys
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+LOG_DIR = Path("logs")
+LOG_FILE = LOG_DIR / "pipeline.log"
+# ~5 MB × 3 files — keeps local/CI disk use small; full history goes to S3 in prod
+LOG_MAX_BYTES = int(os.environ.get("LOG_MAX_BYTES", 5 * 1024 * 1024))
+LOG_BACKUP_COUNT = int(os.environ.get("LOG_BACKUP_COUNT", 3))
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -23,15 +30,17 @@ def get_logger(name: str) -> logging.Logger:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # stdout handler (captured by GitHub Actions)
     sh = logging.StreamHandler(sys.stdout)
     sh.setFormatter(fmt)
     logger.addHandler(sh)
 
-    # file handler
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
-    fh = logging.FileHandler(log_dir / "pipeline.log", encoding="utf-8")
+    LOG_DIR.mkdir(exist_ok=True)
+    fh = RotatingFileHandler(
+        LOG_FILE,
+        maxBytes=LOG_MAX_BYTES,
+        backupCount=LOG_BACKUP_COUNT,
+        encoding="utf-8",
+    )
     fh.setFormatter(fmt)
     logger.addHandler(fh)
 

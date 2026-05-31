@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from io import BytesIO
+from pathlib import Path
 
 import boto3
 import pandas as pd
@@ -49,6 +50,35 @@ class S3Loader:
         key = f"reports/{now.strftime('%Y-%m-%d')}/summary.json"
         payload = json.dumps(report, ensure_ascii=False, default=str).encode("utf-8")
         return self._upload(payload, key, "application/json")
+
+    def upload_log_file(self, path: str | Path, run_ts: datetime | None = None) -> str | None:
+        """Upload pipeline log file to S3 (dated prefix)."""
+        log_path = Path(path)
+        if not log_path.is_file():
+            log.warning("S3: log file not found: %s", log_path)
+            return None
+        now = run_ts or self._utc_now()
+        key = (
+            f"logs/{now.year}/{now.month:02d}/{now.day:02d}/"
+            f"pipeline_{now.strftime('%H-%M-%S')}.log"
+        )
+        return self._upload(log_path.read_bytes(), key, "text/plain; charset=utf-8")
+
+    def list_recent(self, prefix: str, max_keys: int = 10) -> list[str]:
+        """Return the most recent object keys under a prefix (for verification)."""
+        try:
+            resp = self.client.list_objects_v2(
+                Bucket=self.bucket,
+                Prefix=prefix.rstrip("/") + "/",
+                MaxKeys=1000,
+            )
+        except (BotoCoreError, ClientError) as exc:
+            log.error("S3 list failed for prefix %s: %s", prefix, exc)
+            return []
+        contents = resp.get("Contents") or []
+        epoch = datetime.min.replace(tzinfo=timezone.utc)
+        contents.sort(key=lambda o: o.get("LastModified") or epoch, reverse=True)
+        return [obj["Key"] for obj in contents[:max_keys]]
 
     # ── Private ───────────────────────────────────────────────────────────────
 
