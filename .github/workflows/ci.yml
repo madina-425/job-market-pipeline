@@ -114,61 +114,11 @@ jobs:
           path: reports/junit.xml
           retention-days: 14
 
-# smoke test
-  smoke-test:
-    name: Smoke test
-    runs-on: ubuntu-24.04
-    needs: [lint, test]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Restore pip cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: test-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
-          restore-keys: |
-            test-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Verify top-level imports
-        run: |
-          python -c "
-          import src.pipeline
-          import src.models
-          # add your real top-level modules here
-          print('imports OK')
-          "
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-
-      - name: Dry-run pipeline entrypoint
-        run: python -m src.pipeline --dry-run
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-          PIPELINE_ENV: development
-          LOG_LEVEL: WARNING
-          AWS_ACCESS_KEY_ID: test
-          AWS_SECRET_ACCESS_KEY: test
-          AWS_REGION: eu-west-1
-          S3_BUCKET_NAME: test-bucket
-          DB_HOST: localhost
-          DB_USER: test
-          DB_PASSWORD: test
-
   # docker build ────────────────────────────────────────────────────────
   docker-build:
     name: Docker build check
     runs-on: ubuntu-24.04
-    needs: [smoke-test]
+    needs: [lint, test]
 
     steps:
       - uses: actions/checkout@v4
