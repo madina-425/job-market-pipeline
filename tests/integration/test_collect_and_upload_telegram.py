@@ -5,7 +5,6 @@ Usage: python -m pipelines.test_collect_and_upload_telegram
 """
 from __future__ import annotations
 
-import time
 from configs import settings
 from src.collectors.telegram_collector import TelegramCollector
 from src.loaders.s3_loader import S3Loader

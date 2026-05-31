@@ -5,7 +5,6 @@ Usage: python -m pipelines.test_collect_and_upload
 """
 from __future__ import annotations
 
-import time
 from configs import settings
 from src.collectors.hh_collector import HHCollector
 from src.loaders.s3_loader import S3Loader

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import sys
 import time
-from datetime import datetime, timezone
 
 from configs import settings
 from src.loaders.rds_loader import RDSLoader
