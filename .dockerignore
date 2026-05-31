@@ -1,0 +1,27 @@
+# Python / local dev
+.venv/
+__pycache__/
+*.pyc
+.env
+*.egg-info/
+
+# VCS & CI
+.git/
+.github/
+
+# Tests & dev artifacts
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Data & logs
+logs/
+*.csv
+*.parquet
+*.db
+*.sqlite
+
+# Telegram / HH session caches
+*.session
+*.hh_token_cache

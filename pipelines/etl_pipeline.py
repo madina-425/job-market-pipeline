@@ -6,6 +6,7 @@ Or via GitHub Actions (see .github/workflows/pipeline.yml).
 """
 from __future__ import annotations
 
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -43,10 +44,11 @@ def run():
     log.info("Stage: EXTRACT")
     all_raw: list[dict] = []
 
-    collectors = [
-        ("headhunter", HHCollector()),
-        ("telegram", TelegramCollector()),
-    ]
+    collectors: list[tuple[str, object]] = [("headhunter", HHCollector())]
+    if os.environ.get("TELEGRAM_API_ID") and os.environ.get("TELEGRAM_API_HASH"):
+        collectors.append(("telegram", TelegramCollector()))
+    else:
+        log.warning("TELEGRAM_API_ID / TELEGRAM_API_HASH not set — skipping Telegram")
 
     for source_name, collector in collectors:
         try:

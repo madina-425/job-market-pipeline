@@ -39,3 +39,6 @@ logs/
 # others
 *.hh_token_cache
 *.session
+
+# Next.js web app (separate repo / deployment)
+web/
