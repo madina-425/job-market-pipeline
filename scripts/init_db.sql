@@ -2,9 +2,6 @@
 -- Run once to initialise the job market database.
 -- Compatible with PostgreSQL 14+
 
-CREATE DATABASE "jobmarket-db";
-\c "jobmarket-db";
-
 -- ── Core tables ──────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS jobs (
