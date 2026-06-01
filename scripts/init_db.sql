@@ -2,8 +2,8 @@
 -- Run once to initialise the job market database.
 -- Compatible with PostgreSQL 14+
 
-CREATE DATABASE jobmarket;
-\c jobmarket;
+CREATE DATABASE "jobmarket-db";
+\c "jobmarket-db";
 
 -- ── Core tables ──────────────────────────────────────────────────────────────
 
@@ -37,14 +37,3 @@ CREATE INDEX IF NOT EXISTS idx_jobs_role_category   ON jobs(role_category);
 CREATE INDEX IF NOT EXISTS idx_jobs_published_at    ON jobs(published_at);
 CREATE INDEX IF NOT EXISTS idx_jobs_remote_type     ON jobs(remote_type);
 CREATE INDEX IF NOT EXISTS idx_jobs_location        ON jobs(location);
-
--- ── Read-only application user ────────────────────────────────────────────────
--- Run as superuser: 
--- хочу оставить для аус рдс
-
--- CREATE ROLE pipeline_user LOGIN PASSWORD 'change_me';
--- GRANT CONNECT ON DATABASE jobmarket TO pipeline_user;
--- GRANT USAGE ON SCHEMA public TO pipeline_user;
--- GRANT SELECT, INSERT, UPDATE ON jobs TO pipeline_user;
--- GRANT SELECT ON mv_skill_demand, mv_salary_summary, mv_remote_trends, mv_city_hiring TO pipeline_user;
--- GRANT USAGE, SELECT ON SEQUENCE jobs_id_seq TO pipeline_user;
