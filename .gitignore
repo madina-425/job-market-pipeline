@@ -1,5 +1,8 @@
 # Python
 .venv/
+venv/
+ENV/
+env/
 __pycache__/
 *.pyc
 *.pyo
@@ -8,25 +11,36 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.eggs/
 
 # Environment variables
 .env
+.env.local
+.env.*.local
 
-# Telegram session file
+# Telegram / HH session files
 *.session
+*.hh_token_cache
 
 # Database
 *.db
 *.sqlite
+*.sqlite3
 
 # OS
 .DS_Store
+Thumbs.db
 
-# VSCode
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # Jupyter
 .ipynb_checkpoints/
+*.ipynb
 
 # Logs
 *.log
@@ -35,10 +49,10 @@ logs/
 # Data outputs
 *.csv
 *.parquet
+data/
+outputs/
 
-# others
-*.hh_token_cache
-*.session
-
-# Next.js web app (separate repo / deployment)
-web/
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
