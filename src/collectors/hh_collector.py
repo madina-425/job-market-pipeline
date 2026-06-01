@@ -29,6 +29,9 @@ TARGET_ROLES = [
     "ML Engineer",
     "аналитик данных",
     "инженер данных",
+    "ML инженер",
+    "машинное обучение",
+    "data science",
 ]
 
 HH_BASE = "https://api.hh.ru"
@@ -216,7 +219,7 @@ def _map_schedule(schedule_id: str | None) -> str:
 
 def _map_experience(exp_id: str | None) -> str:
     mapping = {
-        "noExperience": "junior",
+        "noExperience": "intern/junior",
         "between1And3": "mid",
         "between3And6": "senior",
         "moreThan6": "senior",
