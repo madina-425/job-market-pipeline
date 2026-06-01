@@ -148,14 +148,15 @@ class JobTransformer:
         return df
 
     def _classify_remote(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Ensure remote_type is one of: remote | hybrid | on-site | unknown."""
-        valid = {"remote", "hybrid", "on-site", "on site", "onsite"}
+        """Normalize remote_type to: remote | hybrid | on-site | unknown."""
         def classify(val):
             if not isinstance(val, str):
                 return "unknown"
             val = val.lower().strip()
-            if val in valid or val == "onsite":
-                return "on-site" if val in ("on site", "onsite") else val
+            if val in ("on site", "onsite"):
+                return "on-site"
+            if val in ("remote", "hybrid"):
+                return val
             return "unknown"
 
         df["remote_type"] = df["remote_type"].apply(classify)
@@ -179,15 +180,43 @@ class JobTransformer:
         return df
 
     def _add_role_category(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Classify each job into one of our three target roles."""
+        """Classify into ML Engineer, Data Engineer, Data Analyst, or Other."""
         def categorise(title: str) -> str:
             t = str(title).lower()
-            if any(w in t for w in ["machine learning", "ml engineer", "deep learning", "ai engineer"]):
-                return "ML Engineer"
-            if any(w in t for w in ["data engineer", "data pipeline", "etl", "data platform"]):
+
+            # ML Engineer patterns (English + Russian)
+            ml_keywords = [
+                "machine learning", "ml engineer", "deep learning", "ai engineer",
+                "инженер ml", "инженер ai", "инженер машинного обучения",
+                "machine learning engineer",
+            ]
+            if any(w in t for w in ml_keywords):
+                return "ML/AI Engineer"
+
+            # Data Engineer patterns (English + Russian)
+            de_keywords = [
+                "data engineer", "data pipeline", "etl", "data platform",
+                "инженер данных", "data infrastructure", "analytics engineer",
+                "инженер аналитики", "инженер аналитики данных",
+            ]
+            if any(w in t for w in de_keywords):
                 return "Data Engineer"
-            if any(w in t for w in ["data analyst", "analytics", "bi analyst", "business analyst"]):
-                return "Data Analyst"
+
+            # Data Analyst patterns (English + Russian) with exclusions
+            da_keywords = [
+                "data analyst", "analytics", "bi analyst", "business analyst",
+                "аналитик данных", "data scientist",
+            ]
+            exclude_keywords = [
+                "финансовый", "системный", "бизнес-аналитик",
+                "бизнес аналитик", "менеджер", "продаж", "маркетолог",
+                "сметчик", "проектировщик", "директор", "координатор",
+                "инженер пто", "девопс", "devops", "сервисный",
+            ]
+            if any(w in t for w in da_keywords):
+                if not any(ex in t for ex in exclude_keywords):
+                    return "Data Analyst"
+
             return "Other"
 
         df["role_category"] = df["title"].apply(categorise)
