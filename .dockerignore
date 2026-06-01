@@ -1,19 +1,25 @@
 # Python / local dev
 .venv/
+venv/
 __pycache__/
 *.pyc
+*.pyo
 .env
 *.egg-info/
+dist/
+build/
 
 # VCS & CI
 .git/
 .github/
+.gitignore
 
 # Tests & dev artifacts
 tests/
 .pytest_cache/
 .coverage
 htmlcov/
+conftest.py
 
 # Data & logs
 logs/
@@ -21,7 +27,23 @@ logs/
 *.parquet
 *.db
 *.sqlite
+data/
+outputs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
 
 # Telegram / HH session caches
 *.session
 *.hh_token_cache
+
+# Documentation
+*.md
+README.md
+CHANGELOG.md
+
+# Misc
+.DS_Store
+Thumbs.db
