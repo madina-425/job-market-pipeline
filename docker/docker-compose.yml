@@ -46,8 +46,26 @@ services:
       - ../logs:/app/logs   # persist logs on host
     restart: "no"           # run once; use cron/Airflow for scheduling
 
+  # ── Grafana Dashboard ─────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: jobmarket_grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - db
+    restart: unless-stopped
+
 volumes:
   pg_data:
+  grafana_data:
 
 networks:
   default:
