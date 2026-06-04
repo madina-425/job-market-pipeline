@@ -191,8 +191,7 @@ class JobTransformer:
                 "machine learning engineer",
             ]
             if any(w in t for w in ml_keywords):
-                return "ML/AI Engineer"
-
+                return "ML Engineer"
             # Data Engineer patterns (English + Russian)
             de_keywords = [
                 "data engineer", "data pipeline", "etl", "data platform",
