@@ -65,7 +65,6 @@ services:
 
 volumes:
   pg_data:
-  grafana_data:
 
 networks:
   default:
